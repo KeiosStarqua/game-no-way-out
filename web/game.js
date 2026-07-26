@@ -205,18 +205,45 @@
   }
 
   function tryFireBullet() {
-    if (state.screen !== "play" || !state.player) return false;
-    if (state.fireCooldown > 0) return false;
+    if (state.screen !== "play" || !state.player || state.fireCooldown > 0) return false;
     const p = state.player;
     state.bullets.push({
       x: p.x,
       y: p.y + p.r * 0.5 * p.scale,
       r: BULLET_RADIUS,
-      dmg: BULLET_DAMAGE,
-      speed: BULLET_SPEED,
     });
     state.fireCooldown = BULLET_COOLDOWN;
     return true;
+  }
+
+  function updateBullets(dt) {
+    state.fireCooldown = Math.max(0, state.fireCooldown - dt);
+    const boss = state.boss?.alive ? state.boss : null;
+
+    for (const b of state.bullets) {
+      b.y += BULLET_SPEED * dt;
+      if (b.y > 7) {
+        b.dead = true;
+        continue;
+      }
+
+      for (const e of state.enemies) {
+        if (e.dead) continue;
+        if (hitCircle(b.x, b.y, b.r, e.x, e.y, e.r)) {
+          e.hp -= BULLET_DAMAGE;
+          if (e.hp <= 0) e.dead = true;
+          b.dead = true;
+          break;
+        }
+      }
+      if (b.dead) continue;
+
+      if (boss && hitCircle(b.x, b.y, b.r, boss.x, boss.y, boss.r)) {
+        boss.hp -= BULLET_DAMAGE * BULLET_BOSS_FACTOR;
+        b.dead = true;
+      }
+    }
+    state.bullets = state.bullets.filter((b) => !b.dead);
   }
 
   function spawnFoodOrEnemy() {
@@ -333,30 +360,7 @@
     p.y = clamp(p.y, -5, 5);
     p.scale += (p.targetScale - p.scale) * Math.min(1, dt / 0.35);
 
-    state.fireCooldown = Math.max(0, state.fireCooldown - dt);
-    for (const b of state.bullets) {
-      b.y += b.speed * dt;
-      if (b.y > 7) b.dead = true;
-      if (b.dead) continue;
-      for (const e of state.enemies) {
-        if (e.dead) continue;
-        if (hitCircle(b.x, b.y, b.r, e.x, e.y, e.r)) {
-          e.hp -= b.dmg;
-          b.dead = true;
-          if (e.hp <= 0) e.dead = true;
-          break;
-        }
-      }
-      if (b.dead) continue;
-      if (state.boss?.alive) {
-        const boss = state.boss;
-        if (hitCircle(b.x, b.y, b.r, boss.x, boss.y, boss.r)) {
-          boss.hp -= b.dmg * BULLET_BOSS_FACTOR;
-          b.dead = true;
-        }
-      }
-    }
-    state.bullets = state.bullets.filter((b) => !b.dead);
+    updateBullets(dt);
 
     for (const f of state.foods) {
       f.y -= (scrollSpeed + 1.2) * dt;
@@ -827,10 +831,14 @@
     return false;
   }
 
+  function setPointerWorld(wx, wy) {
+    state.pointerX = clamp(wx, -2.2, 2.2);
+    state.pointerY = clamp(wy, -5, 5);
+  }
+
   function setPointerFromCanvas(cx, cy) {
     const w = canvasToWorld(cx, cy);
-    state.pointerX = clamp(w.x, -2.2, 2.2);
-    state.pointerY = clamp(w.y, -5, 5);
+    setPointerWorld(w.x, w.y);
   }
 
   function onPointerDown(e) {
@@ -921,10 +929,7 @@
   window.__nwo = {
     getState: () => state.screen,
     startLevel: (n) => resetPlay(n || 1),
-    setPointer: (wx, wy) => {
-      state.pointerX = clamp(wx, -2.2, 2.2);
-      state.pointerY = clamp(wy, -5, 5);
-    },
+    setPointer: (wx, wy) => setPointerWorld(wx, wy),
     fire: () => tryFireBullet(),
     bullets: () => state.bullets.length,
     player: () => (state.player ? { x: state.player.x, y: state.player.y } : null),
