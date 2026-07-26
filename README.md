@@ -13,14 +13,14 @@ cd web
 
 Open [http://127.0.0.1:8765/](http://127.0.0.1:8765/). Optional custom port: `./serve.sh 9000`.
 
-Works with mouse or touch: move to steer, click / tap to shoot upward.
+Works with mouse or touch: move to steer, hold / click / tap to shoot upward.
 
 ## How to play
 
 1. You are a bacterium — conquer the body with your allies.
 2. Eat food to earn points; avoid dying too soon.
 3. After 3 food, you can spawn virus allies (costs 3 points each, up to 3 allies).
-4. Move freely in the tunnel and click / tap to fire energy bullets.
+4. Move freely in the tunnel and hold / click / tap to fire energy bullets.
 
 Avoid antibodies and tunnel walls. Level 3 has a boss. Progress is saved in the browser (`localStorage`).
 
