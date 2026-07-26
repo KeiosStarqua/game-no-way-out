@@ -1,6 +1,6 @@
 # No Way Out
 
-A vertical endless-style action game where you play as a bacterium invading a body. Hold to fly, eat food, recruit virus allies, dodge antibodies and walls, and survive through three levels — including a boss fight on Level 3.
+A vertical endless-style action game where you play as a bacterium invading a body. Steer with the pointer, fire energy bullets, eat food, recruit virus allies, dodge antibodies and walls, and survive through three levels — including a boss fight on Level 3.
 
 ## Play (web)
 
@@ -13,14 +13,14 @@ cd web
 
 Open [http://127.0.0.1:8765/](http://127.0.0.1:8765/). Optional custom port: `./serve.sh 9000`.
 
-Works with mouse or touch: hold to fly, drag left/right to steer.
+Works with mouse or touch: move to steer, click / tap to shoot upward.
 
 ## How to play
 
 1. You are a bacterium — conquer the body with your allies.
 2. Eat food to earn points; avoid dying too soon.
 3. After 3 food, you can spawn virus allies (costs 3 points each, up to 3 allies).
-4. Keep holding — release and you fall.
+4. Move freely in the tunnel and click / tap to fire energy bullets.
 
 Avoid antibodies and tunnel walls. Level 3 has a boss. Progress is saved in the browser (`localStorage`).
 

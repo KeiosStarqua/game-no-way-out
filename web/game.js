@@ -575,9 +575,9 @@
 
     if (state.grace > 0) {
       ctx.fillStyle = "rgba(255,255,255,0.85)";
-      ctx.font = '600 20px "IBM Plex Sans", sans-serif';
+      ctx.font = '600 18px "IBM Plex Sans", sans-serif';
       ctx.textAlign = "center";
-      ctx.fillText("HOLD to invade", W / 2, H * 0.62);
+      ctx.fillText("Move to steer · Click to shoot", W / 2, H * 0.62);
     }
 
     if (state.warningT > 0) {
@@ -612,7 +612,7 @@
 
     ctx.fillStyle = "rgba(255,230,210,0.8)";
     ctx.font = '400 14px "IBM Plex Sans", sans-serif';
-    ctx.fillText("Conquer the body. Don't let go.", W / 2, H * 0.42);
+    ctx.fillText("Conquer the body. Aim true.", W / 2, H * 0.42);
 
     const vf = imgs.virus[Math.floor(state.anim * 6) % Math.max(1, imgs.virus.length)];
     drawImgCentered(vf, 0, -0.4, 110, 95);
@@ -649,8 +649,8 @@
       "2. Eat food and don't die too soon.",
       "3. After 3 food you can create more",
       "   virus allies (costs 3 points).",
-      "4. Don't release your finger unless",
-      "   you want to die.",
+      "4. Move to steer. Click / tap to shoot",
+      "   energy bullets upward.",
       "",
       "Avoid antibodies and tunnel walls.",
       "Level 3 has a boss — survive it!",
