@@ -46,6 +46,12 @@
     3: { duration: 20, enemyChance: 0.38, haveBoss: true, bossLife: 30, allied: true },
   };
 
+  const BULLET_COOLDOWN = 0.2;
+  const BULLET_SPEED = 10;
+  const BULLET_DAMAGE = 2;
+  const BULLET_RADIUS = 0.18;
+  const BULLET_BOSS_FACTOR = 0.35;
+
   const state = {
     screen: "boot",
     level: 1,
@@ -59,6 +65,8 @@
     foods: [],
     enemies: [],
     obstacles: [],
+    bullets: [],
+    fireCooldown: 0,
     boss: null,
     bgY: [9, 0],
     spawnTimer: 0,
@@ -173,6 +181,8 @@
     state.foods = [];
     state.enemies = [];
     state.obstacles = [];
+    state.bullets = [];
+    state.fireCooldown = 0;
     state.boss = null;
     state.bgY = [9, 0];
     state.spawnTimer = 1;
@@ -192,6 +202,21 @@
     };
     state.pointerX = state.player.x;
     state.pointerY = state.player.y;
+  }
+
+  function tryFireBullet() {
+    if (state.screen !== "play" || !state.player) return false;
+    if (state.fireCooldown > 0) return false;
+    const p = state.player;
+    state.bullets.push({
+      x: p.x,
+      y: p.y + p.r * 0.5 * p.scale,
+      r: BULLET_RADIUS,
+      dmg: BULLET_DAMAGE,
+      speed: BULLET_SPEED,
+    });
+    state.fireCooldown = BULLET_COOLDOWN;
+    return true;
   }
 
   function spawnFoodOrEnemy() {
@@ -258,6 +283,7 @@
     if (state.screen !== "play") return;
     state.screen = "dead";
     state.popupMsg = msg || "Oops. Your bacteria is eaten. Try this level again.";
+    state.bullets = [];
     buildPopupButtons(false);
   }
 
@@ -265,6 +291,7 @@
     if (state.screen !== "play") return;
     state.screen = "win";
     state.popupMsg = "Congratulation. You just pass this level.";
+    state.bullets = [];
     if (!progress.cleared.includes(state.level)) {
       progress.cleared.push(state.level);
       saveProgress(progress);
@@ -305,6 +332,31 @@
     p.x = clamp(p.x, -2.2, 2.2);
     p.y = clamp(p.y, -5, 5);
     p.scale += (p.targetScale - p.scale) * Math.min(1, dt / 0.35);
+
+    state.fireCooldown = Math.max(0, state.fireCooldown - dt);
+    for (const b of state.bullets) {
+      b.y += b.speed * dt;
+      if (b.y > 7) b.dead = true;
+      if (b.dead) continue;
+      for (const e of state.enemies) {
+        if (e.dead) continue;
+        if (hitCircle(b.x, b.y, b.r, e.x, e.y, e.r)) {
+          e.hp -= b.dmg;
+          b.dead = true;
+          if (e.hp <= 0) e.dead = true;
+          break;
+        }
+      }
+      if (b.dead) continue;
+      if (state.boss?.alive) {
+        const boss = state.boss;
+        if (hitCircle(b.x, b.y, b.r, boss.x, boss.y, boss.r)) {
+          boss.hp -= b.dmg * BULLET_BOSS_FACTOR;
+          b.dead = true;
+        }
+      }
+    }
+    state.bullets = state.bullets.filter((b) => !b.dead);
 
     for (const f of state.foods) {
       f.y -= (scrollSpeed + 1.2) * dt;
@@ -451,6 +503,25 @@
     ctx.fillRect(W * 0.92, 0, W * 0.08, H);
   }
 
+  function drawGlowBullet(b) {
+    const s = worldToScreen(b.x, b.y);
+    const rPx = Math.max(4, b.r * PPU);
+    const halo = rPx * 2.6;
+    const g = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, halo);
+    g.addColorStop(0, "rgba(255, 255, 255, 0.95)");
+    g.addColorStop(0.25, "rgba(120, 255, 255, 0.85)");
+    g.addColorStop(0.55, "rgba(40, 200, 255, 0.35)");
+    g.addColorStop(1, "rgba(20, 120, 255, 0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, halo, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(230, 255, 255, 0.95)";
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, rPx * 0.55, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
   function drawPlay() {
     drawBackgroundPlay();
 
@@ -477,6 +548,8 @@
     for (const a of state.allies) {
       drawImgCentered(imgs.ally[a.frame % imgs.ally.length], a.x, a.y, 44, 44);
     }
+
+    for (const b of state.bullets) drawGlowBullet(b);
 
     const p = state.player;
     const vf = imgs.virus[Math.floor(state.anim * 8) % imgs.virus.length];
@@ -762,10 +835,12 @@
 
   function onPointerDown(e) {
     e.preventDefault();
+    if (typeof e.button === "number" && e.button !== 0) return;
     const { x, y } = eventToCanvas(e);
     if (handleUiClick(x, y)) return;
     if (state.screen === "play") {
       setPointerFromCanvas(x, y);
+      tryFireBullet();
     }
   }
 
@@ -846,7 +921,16 @@
   window.__nwo = {
     getState: () => state.screen,
     startLevel: (n) => resetPlay(n || 1),
-    // hold() removed — free mouse-follow; U3 adds setPointer/fire helpers
+    setPointer: (wx, wy) => {
+      state.pointerX = clamp(wx, -2.2, 2.2);
+      state.pointerY = clamp(wy, -5, 5);
+    },
+    fire: () => tryFireBullet(),
+    bullets: () => state.bullets.length,
+    player: () => (state.player ? { x: state.player.x, y: state.player.y } : null),
+    enemies: () => state.enemies.map((e) => ({ x: e.x, y: e.y, hp: e.hp })),
+    boss: () => (state.boss ? { hp: state.boss.hp, life: state.boss.life, alive: state.boss.alive } : null),
+    // Deprecated hold-to-fly harness; kept as no-op for any external callers.
     hold: () => {},
     click: (cx, cy) => handleUiClick(cx, cy),
   };
