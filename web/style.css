@@ -1,0 +1,48 @@
+@import url("https://fonts.googleapis.com/css2?family=Bungee&family=IBM+Plex+Sans:wght@400;600&display=swap");
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  background:
+    radial-gradient(ellipse at 50% 20%, #3a1520 0%, transparent 55%),
+    linear-gradient(180deg, #1a0a10 0%, #0d0610 45%, #120818 100%);
+  color: #f4e8de;
+  font-family: "IBM Plex Sans", sans-serif;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+}
+
+#wrap {
+  min-height: 100%;
+  display: grid;
+  place-content: center;
+  gap: 0.6rem;
+  padding: 0.75rem;
+}
+
+#game {
+  width: min(100vw - 1.5rem, 420px);
+  height: auto;
+  aspect-ratio: 420 / 720;
+  border-radius: 18px;
+  box-shadow:
+    0 0 0 2px rgba(255, 120, 90, 0.35),
+    0 24px 60px rgba(0, 0, 0, 0.55);
+  background: #10060c;
+  cursor: crosshair;
+  display: block;
+}
+
+#hint {
+  text-align: center;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  opacity: 0.65;
+}
