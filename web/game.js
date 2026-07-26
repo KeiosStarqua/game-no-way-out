@@ -46,10 +46,10 @@
     3: { duration: 20, enemyChance: 0.38, haveBoss: true, bossLife: 30, allied: true },
   };
 
-  const BULLET_COOLDOWN = 0.2;
-  const BULLET_SPEED = 10;
+  const BULLET_COOLDOWN = 0.16;
+  const BULLET_SPEED = 8;
   const BULLET_DAMAGE = 2;
-  const BULLET_RADIUS = 0.18;
+  const BULLET_RADIUS = 0.28;
   const BULLET_BOSS_FACTOR = 0.35;
 
   const state = {
@@ -57,6 +57,7 @@
     level: 1,
     pointerX: 0,
     pointerY: 0,
+    firing: false,
     t: 0,
     anim: 0,
     points: 0,
@@ -183,6 +184,7 @@
     state.obstacles = [];
     state.bullets = [];
     state.fireCooldown = 0;
+    state.firing = false;
     state.boss = null;
     state.bgY = [9, 0];
     state.spawnTimer = 1;
@@ -209,7 +211,7 @@
     const p = state.player;
     state.bullets.push({
       x: p.x,
-      y: p.y + p.r * 0.5 * p.scale,
+      y: p.y + p.r * 0.95 * p.scale + 0.2,
       r: BULLET_RADIUS,
     });
     state.fireCooldown = BULLET_COOLDOWN;
@@ -309,6 +311,7 @@
   function killPlayer(msg) {
     if (state.screen !== "play") return;
     state.screen = "dead";
+    state.firing = false;
     state.popupMsg = msg || "Oops. Your bacteria is eaten. Try this level again.";
     state.bullets = [];
     buildPopupButtons(false);
@@ -317,6 +320,7 @@
   function winLevel() {
     if (state.screen !== "play") return;
     state.screen = "win";
+    state.firing = false;
     state.popupMsg = "Congratulation. You just pass this level.";
     state.bullets = [];
     if (!progress.cleared.includes(state.level)) {
@@ -360,6 +364,7 @@
     p.y = clamp(p.y, -5, 5);
     p.scale += (p.targetScale - p.scale) * Math.min(1, dt / 0.35);
 
+    if (state.firing) tryFireBullet();
     updateBullets(dt);
 
     for (const f of state.foods) {
@@ -509,18 +514,29 @@
 
   function drawGlowBullet(b) {
     const s = worldToScreen(b.x, b.y);
-    const rPx = Math.max(4, b.r * PPU);
-    const halo = rPx * 2.6;
+    const rPx = Math.max(8, b.r * PPU);
+    const halo = rPx * 3.2;
+    const trail = worldToScreen(b.x, b.y - 0.35);
+    const tg = ctx.createLinearGradient(trail.x, trail.y, s.x, s.y);
+    tg.addColorStop(0, "rgba(40, 220, 255, 0)");
+    tg.addColorStop(1, "rgba(120, 255, 255, 0.75)");
+    ctx.strokeStyle = tg;
+    ctx.lineWidth = rPx * 0.9;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(trail.x, trail.y);
+    ctx.lineTo(s.x, s.y);
+    ctx.stroke();
     const g = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, halo);
-    g.addColorStop(0, "rgba(255, 255, 255, 0.95)");
-    g.addColorStop(0.25, "rgba(120, 255, 255, 0.85)");
-    g.addColorStop(0.55, "rgba(40, 200, 255, 0.35)");
+    g.addColorStop(0, "rgba(255, 255, 255, 1)");
+    g.addColorStop(0.2, "rgba(160, 255, 255, 0.95)");
+    g.addColorStop(0.5, "rgba(40, 210, 255, 0.45)");
     g.addColorStop(1, "rgba(20, 120, 255, 0)");
     ctx.fillStyle = g;
     ctx.beginPath();
     ctx.arc(s.x, s.y, halo, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = "rgba(230, 255, 255, 0.95)";
+    ctx.fillStyle = "#ffffff";
     ctx.beginPath();
     ctx.arc(s.x, s.y, rPx * 0.55, 0, Math.PI * 2);
     ctx.fill();
@@ -581,7 +597,7 @@
       ctx.fillStyle = "rgba(255,255,255,0.85)";
       ctx.font = '600 18px "IBM Plex Sans", sans-serif';
       ctx.textAlign = "center";
-      ctx.fillText("Move to steer · Click to shoot", W / 2, H * 0.62);
+      ctx.fillText("Move to steer · Hold to shoot", W / 2, H * 0.62);
     }
 
     if (state.warningT > 0) {
@@ -653,7 +669,7 @@
       "2. Eat food and don't die too soon.",
       "3. After 3 food you can create more",
       "   virus allies (costs 3 points).",
-      "4. Move to steer. Click / tap to shoot",
+      "4. Move to steer. Hold / tap to shoot",
       "   energy bullets upward.",
       "",
       "Avoid antibodies and tunnel walls.",
@@ -841,12 +857,22 @@
     setPointerWorld(w.x, w.y);
   }
 
+  function stopFiring() {
+    state.firing = false;
+  }
+
   function onPointerDown(e) {
     e.preventDefault();
     if (typeof e.button === "number" && e.button !== 0) return;
     const { x, y } = eventToCanvas(e);
     if (handleUiClick(x, y)) return;
     if (state.screen === "play") {
+      try {
+        canvas.setPointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+      state.firing = true;
       setPointerFromCanvas(x, y);
       tryFireBullet();
     }
@@ -859,8 +885,16 @@
     setPointerFromCanvas(x, y);
   }
 
+  function onPointerUp(e) {
+    if (typeof e.button === "number" && e.button !== 0) return;
+    stopFiring();
+  }
+
   canvas.addEventListener("pointerdown", onPointerDown);
   canvas.addEventListener("pointermove", onPointerMove);
+  canvas.addEventListener("pointerup", onPointerUp);
+  canvas.addEventListener("pointercancel", stopFiring);
+  canvas.addEventListener("lostpointercapture", stopFiring);
   canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
   let last = performance.now();
