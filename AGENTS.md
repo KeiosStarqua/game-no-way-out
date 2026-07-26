@@ -80,4 +80,7 @@ When the user requests a durable behavior change, record it here or in the relev
 
 ## Child DOX Index
 
-This project is not yet indexed. Before continuing you must scan the project, build the DOX tree and replace this message with the actual index. Go deep and scan files recursively to properly evaluate complexity and create nested DOX files where needed.
+- `web/AGENTS.md` — Canvas playable, serve script, Pages deploy target (`web/`)
+- `docs/AGENTS.md` — plans and solutions notes
+- `Assets/` — legacy Unity project (no AGENTS.md; not the active playable)
+- `ProjectSettings/`, `UnityPackageManager/` — Unity tooling (no AGENTS.md)
