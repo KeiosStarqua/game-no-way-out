@@ -49,8 +49,8 @@
   const state = {
     screen: "boot",
     level: 1,
-    holding: false,
     pointerX: 0,
+    pointerY: 0,
     t: 0,
     anim: 0,
     points: 0,
@@ -167,7 +167,6 @@
     const cfg = LEVELS[level];
     state.screen = "play";
     state.level = level;
-    state.holding = false;
     state.t = 0;
     state.points = 0;
     state.allies = [];
@@ -188,10 +187,11 @@
       r: 0.42,
       scale: 1,
       targetScale: 1,
-      vy: 0,
       allied: cfg.allied,
       foodEaten: 0,
     };
+    state.pointerX = state.player.x;
+    state.pointerY = state.player.y;
   }
 
   function spawnFoodOrEnemy() {
@@ -258,7 +258,6 @@
     if (state.screen !== "play") return;
     state.screen = "dead";
     state.popupMsg = msg || "Oops. Your bacteria is eaten. Try this level again.";
-    state.holding = false;
     buildPopupButtons(false);
   }
 
@@ -301,16 +300,9 @@
       }
     }
 
-    if (state.holding) {
-      p.x += (state.pointerX - p.x) * Math.min(1, 12 * dt);
-      p.x = clamp(p.x, -2.2, 2.2);
-      p.y += (0 - p.y) * Math.min(1, 4 * dt);
-      p.vy = 0;
-    } else if (state.grace <= 0) {
-      p.vy -= 9 * dt;
-      p.y += p.vy * dt;
-      if (p.y < -5.5) killPlayer("Don't release your finger unless you want to die.");
-    }
+    p.x += (state.pointerX - p.x) * Math.min(1, 12 * dt);
+    p.y += (state.pointerY - p.y) * Math.min(1, 12 * dt);
+    p.x = clamp(p.x, -2.2, 2.2);
     p.y = clamp(p.y, -5, 5);
     p.scale += (p.targetScale - p.scale) * Math.min(1, dt / 0.35);
 
@@ -508,7 +500,7 @@
       : `Survive ${Math.max(0, Math.ceil(cfg.duration - state.t))}s`;
     ctx.fillText(`Level ${state.level}  ·  Allies ${state.allies.length}/3  ·  ${left}`, 28, 54);
 
-    if (!state.holding && state.grace > 0) {
+    if (state.grace > 0) {
       ctx.fillStyle = "rgba(255,255,255,0.85)";
       ctx.font = '600 20px "IBM Plex Sans", sans-serif';
       ctx.textAlign = "center";
@@ -762,34 +754,30 @@
     return false;
   }
 
+  function setPointerFromCanvas(cx, cy) {
+    const w = canvasToWorld(cx, cy);
+    state.pointerX = clamp(w.x, -2.2, 2.2);
+    state.pointerY = clamp(w.y, -5, 5);
+  }
+
   function onPointerDown(e) {
     e.preventDefault();
     const { x, y } = eventToCanvas(e);
     if (handleUiClick(x, y)) return;
     if (state.screen === "play") {
-      state.holding = true;
-      state.pointerX = clamp(canvasToWorld(x, y).x, -2.2, 2.2);
+      setPointerFromCanvas(x, y);
     }
   }
 
   function onPointerMove(e) {
-    if (state.screen !== "play" || !state.holding) return;
+    if (state.screen !== "play") return;
     e.preventDefault();
     const { x, y } = eventToCanvas(e);
-    state.pointerX = clamp(canvasToWorld(x, y).x, -2.2, 2.2);
-  }
-
-  function onPointerUp(e) {
-    if (state.screen === "play") {
-      e?.preventDefault?.();
-      state.holding = false;
-    }
+    setPointerFromCanvas(x, y);
   }
 
   canvas.addEventListener("pointerdown", onPointerDown);
   canvas.addEventListener("pointermove", onPointerMove);
-  canvas.addEventListener("pointerup", onPointerUp);
-  canvas.addEventListener("pointercancel", onPointerUp);
   canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
   let last = performance.now();
@@ -858,10 +846,8 @@
   window.__nwo = {
     getState: () => state.screen,
     startLevel: (n) => resetPlay(n || 1),
-    hold: (on) => {
-      state.holding = !!on;
-      if (on && state.player) state.pointerX = state.player.x;
-    },
+    // hold() removed — free mouse-follow; U3 adds setPointer/fire helpers
+    hold: () => {},
     click: (cx, cy) => handleUiClick(cx, cy),
   };
 })();
